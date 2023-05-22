@@ -1,0 +1,54 @@
+1.
+import pandas as pd
+import numpy as np
+
+2.
+from google.colab import files
+uploaded = files.upload()
+
+{Then upload the facebook dataset }
+
+3.
+df = pd.read_csv('dataset_Facebook.csv')
+
+4.
+df.describe()
+
+5.
+df.shape
+
+6.
+df1 = df[['pagetotallikes', 'type', 'category', 'postmonth']].loc[0:15]
+df1
+
+7.
+df2 = df[['pagetotallikes', 'type', 'category', 'postmonth']].loc[16:30]
+df2
+
+8.
+df3 = df[['pagetotallikes', 'type', 'category', 'postmonth']].loc[30:45]
+df3
+
+9.
+merging = pd.concat([df1, df2, df3])
+merging
+
+10.
+df.transpose()
+
+11.
+sort_values = df.sort_values('pagetotallikes', ascending = False)
+sort_values
+
+12.
+shaping = df.shape
+shaping
+
+13.
+pivot_table = pd.pivot_table(df, index = ['type', 'category'], values = 'comment')
+pivot_table
+
+14.
+reshaping_arr = np.array([1,2,3,4,5,6])
+reshaping_arr.reshape(2,3)
+

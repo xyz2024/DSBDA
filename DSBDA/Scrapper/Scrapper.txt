@@ -1,0 +1,70 @@
+1.
+import pandas as pd
+from bs4 import BeautifulSoup
+from requests import get
+
+2.
+url='https://www.flipkart.com/search?q=tv+smart+tv&sid=ckf%2Cczl&as=on&as-show=on&otracker=AS_QueryStore_OrganicAutoSuggest_1_2_na_na_na&otracker1=AS_QueryStore_OrganicAutoSuggest_1_2_na_na_na&as-pos=1&as-type=RECENT&suggestionId=tv+smart+tv%7CTelevisions&requestId=b12db4dc-db18-45fc-81d3-afdd75727661&as-backfill=on'
+url
+
+3.
+response=get(url)
+response
+
+4.
+soup=BeautifulSoup(response.text,'lxml')
+
+5.
+master_container=soup.find_all('div',{'class':'_2kHMtA'})
+
+6.
+tv_name=[]
+for i in range(len(master_container)):
+    try:
+        tv_name.append(master_container[i].find('div',{'class':'_4rR01T'}).text)
+    except:
+        tv_name.append(None)
+
+7.
+len(tv_name)
+
+8.
+ratings=[]
+for i in range(len(master_container)):
+    try:
+        ratings.append(master_container[i].find('div',{'class':'_3LWZlK'}).text)
+    except:
+        ratings.append(None)
+9.
+len(ratings)
+
+10.
+price=[]
+for i in range(len(master_container)):
+    try:
+        price.append(master_container[i].find('div',{'class':'_30jeq3 _1_WHN1'}).text)
+    except:
+        price.append(None)
+
+11.
+len(price)
+
+12.
+review=[]
+for i in range(len(master_container)):
+    try:
+        review.append(master_container[i].find('span',{'class':'_2_R_DZ'}).text)
+    except:
+        review.append(None)
+
+13.
+len(review)
+
+14.
+data={"TV":tv_name,'Ratings':ratings,'Price':price,'Reviews':review}
+
+15.
+data=pd.DataFrame(data)
+data
+
+
