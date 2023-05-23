@@ -1,0 +1,896 @@
+Assignment no 1:
+hadoop java files
+*************Commands**********************
+map reduce (Hadoop)
+
+create folder 
+open Eclipse
+New project
+src -right click
+new package - rename- SalesCountry
+SalesCountry - Right click - new class - Name as- 
+1. SalesMapper
+As same Create 3 class
+2. SalesCountryDriver
+3. SalesCountryReducer
+paste the code for each file
+click on project.- Build Path - Configure Build path- Libraries - Add external jar files - 3 files
+right  click on project- export - java - jar file - name (appjar.jar). 
+next - next
+Mainclass- browse - SalesCountryDriver 
+Finish
+New folder input2000 in home
+access_log_short.csv - copy and paste in input2000 file
+appjar.jar file copy and paste in home
+Open Terminal
+start-all.sh
+jps ( to check all 6 nodes )
+hdfs dfs -put -/input2000 /
+hadoop jar appjar.jar /input2000 /output2000
+output on terminal- hdfs dfs -cat /output2000/part-00000
+output on hadoop - localhost:50070/explorer.html#/
+
+
+******************************************************************************************
+SalesMapper:
+package SalesCountry;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.*;
+
+public class SalesMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, IntWritable> {
+	private final static IntWritable one = new IntWritable(1);
+
+	public void map(LongWritable key, Text value, OutputCollector<Text, IntWritable> output, Reporter reporter) throws IOException {
+
+		String valueString = value.toString();
+		String[] SingleCountryData = valueString.split("-");
+		output.collect(new Text(SingleCountryData[0]), one);
+	}
+}
+
+
+SalesCountryReducer:
+
+package SalesCountry;
+
+import java.io.IOException;
+import java.util.*;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.*;
+
+public class SalesCountryReducer extends MapReduceBase implements Reducer<Text, IntWritable, Text, IntWritable> {
+
+	public void reduce(Text t_key, Iterator<IntWritable> values, OutputCollector<Text,IntWritable> output, Reporter reporter) throws IOException {
+		Text key = t_key;
+		int frequencyForCountry = 0;
+		while (values.hasNext()) {
+			// replace type of value with the actual type of our value
+			IntWritable value = (IntWritable) values.next();
+			frequencyForCountry += value.get();
+			
+		}
+		output.collect(key, new IntWritable(frequencyForCountry));
+	}
+}
+
+
+SalesCountryDriver:
+
+package SalesCountry;
+
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapred.*;
+
+public class SalesCountryDriver {
+	public static void main(String[] args) {
+		JobClient my_client = new JobClient();
+		// Create a configuration object for the job
+		JobConf job_conf = new JobConf(SalesCountryDriver.class);
+
+		// Set a name of the Job
+		job_conf.setJobName("SalePerCountry");
+
+		// Specify data type of output key and value
+		job_conf.setOutputKeyClass(Text.class);
+		job_conf.setOutputValueClass(IntWritable.class);
+
+		// Specify names of Mapper and Reducer Class
+		job_conf.setMapperClass(SalesCountry.SalesMapper.class);
+		job_conf.setReducerClass(SalesCountry.SalesCountryReducer.class);
+
+		// Specify formats of the data type of Input and output
+		job_conf.setInputFormat(TextInputFormat.class);
+		job_conf.setOutputFormat(TextOutputFormat.class);
+
+		// Set input and output directories using command line arguments, 
+		//arg[0] = name of input directory on HDFS, and arg[1] =  name of output directory to be created to store the output file.
+		
+		FileInputFormat.setInputPaths(job_conf, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job_conf, new Path(args[1]));
+
+		my_client.setConf(job_conf);
+		try {
+			// Run the job 
+			JobClient.runJob(job_conf);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+
+******commands for perform on terminal:*******
+
+create input2000 folder in home and paste the csv file in it.
+
+# START HADOOP by start-all.sh
+
+# Copying input to HDFS file System by following command:
+
+	hdfs dfs -put ~/input2000 /
+	
+# Then to perform Map and Reduce:
+	
+	hadoop jar analyzelogs.jar /input2000 /output2000
+	
+# See the Output by following command:
+
+	hdfs dfs -cat /output2000/part-00000
+____________________________________________________________________________________________________
+***
+***
+2. WRITE AN APPLICATION USING HBASE AND HIVEQL FOR FLIGHT INFORMATION SYSTEM WHICH WILL INCLUDE 
+1) Creating, Dropping, and altering Database tables
+2) Creating an external Hive table to connect to the HBase for Customer Information Table
+3) Load table with data, insert new values and field in the table, Join tables with Hive
+4) Create index on Flight information Table 5) Find the average departure delay per day in 2008.
+*** 
+****
+1)student@student22:~$ start-all.sh
+This script is Deprecated. Instead use start-dfs.sh and start-yarn.sh
+Starting namenodes on [localhost]
+localhost: starting namenode, logging to /usr/local/hadoop/hadoop-2.7.0/logs/hadoop-studentnamenode-student22.out
+localhost: starting datanode, logging to /usr/local/hadoop/hadoop-2.7.0/logs/hadoop-studentdatanode-student22.out
+Starting secondary namenodes [0.0.0.0]
+0.0.0.0: starting secondarynamenode, logging to /usr/local/hadoop/hadoop-2.7.0/logs/hadoopstudent-secondarynamenode-student22.out
+starting yarn daemons
+starting resourcemanager, logging to /usr/local/hadoop/hadoop-2.7.0/logs/yarn-studentresourcemanager-student22.out
+localhost: starting nodemanager, logging to /usr/local/hadoop/hadoop-2.7.0/logs/yarn-studentnodemanager-student22.out
+2)student@student22:~$ jps
+3442 ResourceManager
+3571 NodeManager
+3641 Jps
+3242 SecondaryNameNode
+3054 DataNode
+2926 NameNode
+3)student@student22:~$ cd /usr/local/hive/bin
+student@student22:/usr/local/hive/bin$ hive
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/home/edureka/apache-hive-2.1.0-bin/lib/log4j-slf4j-impl2.4.1.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/hadoop-2.7.0/share/hadoop/common/lib/slf4jlog4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+Logging initialized using configuration in jar:file:/home/edureka/apache-hive-2.1.0-bin/lib/hivecommon-2.1.0.jar!/hive-log4j2.properties Async: true
+Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a
+different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+4)hive> set hive.cli.print.current.db=true;
+5)hive (default)> CREATE DATABASE practice;
+OK
+Time taken: 0.935 seconds
+6)hive (default)> Use practice;
+OK
+Time taken: 0.019 seconds
+7)hive (practice)> create table college(
+ > FirstName STRING,
+ > ROLLNO INT);
+OK
+Time taken: 0.888 seconds
+8)hive (practice)> SHOW TABLES;
+
+OK
+college
+Time taken: 0.091 seconds, Fetched: 1 row(s)
+9)hive (practice)> ALTER DATABASE practice SET DBPROPERTIES
+ > ('creator'='IT',
+ > 'created_for'='Lab');
+OK
+Time taken: 0.083 seconds
+16)hive (practice)> DESCRIBE DATABASE EXTENDED practice;
+OK
+practice hdfs://localhost:9000/user/hive/warehouse/practice.dbstudentUSER {creator=IT,
+created_for=Lab}
+Time taken: 0.017 seconds, Fetched: 1 row(s)
+10)hive (practice)> CREATE TABLE IF NOT EXISTS FlightInfo2007
+ > (
+ > Year SMALLINT, Month TINYINT, DayofMonth TINYINT,
+ > DayOfWeek TINYINT, Origin STRING, Dest STRING)
+ > COMMENT 'Flight InfoTable'
+ > ROW FORMAT DELIMITED
+ > FIELDS TERMINATED BY ','
+ > STORED AS TEXTFILE
+ > TBLPROPERTIES ('creator'='PSB ', 'created_at'='Tues
+Dec 5 3:00:00 EDT 2017');
+OK
+Time taken: 0.142 seconds
+11)hive (practice)> load data local inpath
+'/home/student/Desktop/2007.csv' into table FlightInfo2007;
+Loading data to table practice.flightinfo2007
+OK
+Time taken: 1.12 seconds
+12)hive (practice)> CREATE TABLE IF NOT EXISTS FlightInfo2008 LIKE
+FlightInfo2007;
+OK
+Time taken: 0.124 seconds
+13) hive (practice)> load data local inpath
+'/home/student/Desktop/2008.csv' into table FlightInfo2008;
+Loading data to table practice.flightinfo2008
+OK
+Time taken: 0.172 seconds
+14) hive (practice)> CREATE TABLE IF NOT EXISTS myFlightInfo (
+ > Year SMALLINT, DontQueryMonth TINYINT,
+DayofMonth
+ > TINYINT, DayOfWeek TINYINT,Origin STRING, Dest
+STRING)
+ > COMMENT 'Flight InfoTable'
+ > PARTITIONED BY(Month TINYINT)
+ > ROW FORMAT DELIMITED
+ > FIELDS TERMINATED BY ','
+ > LINES TERMINATED BY '\n'
+ > STORED AS RCFILE TBLPROPERTIES
+('creator'='PSB','created_at'='Mon sep 2 14:24:19 EDT 2017');
+OK
+Time taken: 0.117 seconds
+15) hive (practice)> SELECT Year, Month, DayofMonth,
+DayOfWeek,Origin,Dest FROM FlightInfo2008 WHERE Month=1;
+OK
+2008 1 3 4 2003 1955
+2008 1 3 4 754 735
+2008 1 3 4 628 620
+2008 1 3 4 926 930
+2008 1 3 4 1829 1755
+2008 1 3 4 1940 1915
+2008 1 3 4 1937 1830
+Time taken: 0.377 seconds, Fetched: 386 row(s)
+16) hive (practice)> FROM FlightInfo2008 INSERT INTO TABLE
+myflightinfo
+ > PARTITION (Month=2) SELECT Year, Month, DayofMonth,
+DayOfWeek,Origin, Dest WHERE Month=2
+ > INSERT INTO TABLE myflightinfo
+ > PARTITION (Month=12)
+ > SELECT Year, Month, DayofMonth, DayOfWeek,
+ > Origin,Dest WHERE Month=12;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516090102_fbc2a80d-564b-400f-9ed5-2b2bab8e1c2e
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1684206531580_0001, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0001/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0001
+Hadoop job information for Stage-2: number of mappers: 1; number of reducers: 0
+2023-05-16 09:01:09,498 Stage-2 map = 0%, reduce = 0%
+2023-05-16 09:01:13,659 Stage-2 map = 100%, reduce = 0%, Cumulative CPU 2.0 sec
+MapReduce Total cumulative CPU time: 2 seconds 0 msec
+Ended Job = job_1684206531580_0001
+Stage-5 is selected by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Stage-6 is filtered out by condition resolver.
+Stage-11 is selected by condition resolver.
+Stage-10 is filtered out by condition resolver.
+Stage-12 is filtered out by condition resolver.
+Moving data to directory
+hdfs://localhost:9000/user/hive/warehouse/practice.db/myflightinfo/month=2/.hivestaging_hive_2023-05-16_09-01-02_145_1756523499049126719-1/-ext-10000
+Moving data to directory
+hdfs://localhost:9000/user/hive/warehouse/practice.db/myflightinfo/month=12/.hivestaging_hive_2023-05-16_09-01-02_145_1756523499049126719-1/-ext-10002
+Loading data to table practice.myflightinfo partition (month=2)
+Loading data to table practice.myflightinfo partition (month=12)
+MapReduce Jobs Launched:
+Stage-Stage-2: Map: 1 Cumulative CPU: 2.0 sec HDFS Read: 44802 HDFS Write: 223 SUCCESS
+Total MapReduce CPU Time Spent: 2 seconds 0 msec
+OK
+Time taken: 13.413 seconds
+17) hive (practice)> SHOW PARTITIONS myflightinfo;
+OK
+month=12
+month=2
+Time taken: 0.082 seconds, Fetched: 2 row(s)
+18) hive (practice)> CREATE TABLE myflightinfo2007 AS
+ > SELECT Year, Month,Origin,Dest FROM myflightinfo
+ > WHERE (Month = 7 AND DayofMonth=3) AND
+ > (Origin='JFK' AND Dest='ORD');
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516091011_c6d6dd0e-9899-43d5-a22d-32e0b8b56d2b
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1684206531580_0002, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0002/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0002
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2023-05-16 09:10:15,241 Stage-1 map = 0%, reduce = 0%
+2023-05-16 09:10:19,390 Stage-1 map = 100%, reduce = 0%, Cumulative CPU 1.88 sec
+MapReduce Total cumulative CPU time: 1 seconds 880 msec
+Ended Job = job_1684206531580_0002
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/practice.db/.hivestaging_hive_2023-05-16_09-10-11_402_8719348565910822868-1/-ext-10002
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/practice.db/myflightinfo2007
+MapReduce Jobs Launched:
+Stage-Stage-1: Map: 1 Cumulative CPU: 1.88 sec HDFS Read: 5471 HDFS Write: 51 SUCCESS
+Total MapReduce CPU Time Spent: 1 seconds 880 msec
+OK
+Time taken: 9.185 seconds
+19) hive (practice)> SELECT * FROM myflightinfo2007;
+OK
+Time taken: 0.089 seconds
+20) hive (practice)> CREATE TABLE myFlightInfo2008 AS
+ > SELECT Year, Month,Origin, Dest FROM FlightInfo2008
+ > WHERE (Month = 7 AND DayofMonth = 3) AND
+ > (Origin='JFK' AND Dest='ORD');
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516091425_97dcf293-0eec-4609-b7fb-ecb4a1858c9c
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1684206531580_0003, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0003/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0003
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2023-05-16 09:14:29,642 Stage-1 map = 0%, reduce = 0%
+2023-05-16 09:14:33,749 Stage-1 map = 100%, reduce = 0%, Cumulative CPU 1.89 sec
+MapReduce Total cumulative CPU time: 1 seconds 890 msec
+Ended Job = job_1684206531580_0003
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/practice.db/.hivestaging_hive_2023-05-16_09-14-25_964_1058823780665725192-1/-ext-10002
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/practice.db/myflightinfo2008
+MapReduce Jobs Launched:
+Stage-Stage-1: Map: 1 Cumulative CPU: 1.89 sec HDFS Read: 42589 HDFS Write: 51 SUCCESS
+Total MapReduce CPU Time Spent: 1 seconds 890 msec
+OK
+Time taken: 9.204 seconds
+21) hive (practice)> SELECT * FROM myFlightInfo2008;
+OK
+Time taken: 0.113 seconds
+22) hive (practice)> SELECT m8.Year, m8.Month, m8.Origin, m8.Dest,
+m7.Year, m7.Month, m7.Origin, m7.Dest FROM myFlightinfo2008
+m8 JOIN myFlightinfo2007 m7 ON m8.Month=m7.Month;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516091746_caa2da5f-a5a1-4845-b25d-edb710fa0a8b
+Total jobs = 1
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/home/edureka/apache-hive-2.1.0-bin/lib/log4j-slf4j-impl2.4.1.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/hadoop-2.7.0/share/hadoop/common/lib/slf4jlog4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+2023-05-16 09:17:49 Starting to launch local task to process map join; maximum memory
+= 477626368
+2023-05-16 09:17:50 Dump the side-table for tag: 0 with group count: 0 into file:
+file:/tmp/student/0ccab126-eb55-44b4-bc6f-c9589cce313f/hive_2023-05-16_09-17-
+46_406_6235483731910255697-1/-local-10004/HashTable-Stage-3/MapJoin-mapfile00--.hashtable
+2023-05-16 09:17:50 Uploaded 1 File to: file:/tmp/student/0ccab126-eb55-44b4-bc6fc9589cce313f/hive_2023-05-16_09-17-46_406_6235483731910255697-1/-local-10004/HashTableStage-3/MapJoin-mapfile00--.hashtable (260 bytes)
+2023-05-16 09:17:50 End of local task; Time Taken: 0.788 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1684206531580_0004, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0004/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0004
+Hadoop job information for Stage-3: number of mappers: 0; number of reducers: 0
+2023-05-16 09:17:55,124 Stage-3 map = 0%, reduce = 0%
+Ended Job = job_1684206531580_0004
+MapReduce Jobs Launched:
+Stage-Stage-3: HDFS Read: 0 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+Time taken: 10.805 seconds
+23) hive (practice)> SELECT m8.Origin,m8.Dest,m7.Origin,m7.Dest FROM
+myFlightinfo2008 m8 FULL OUTER JOIN myFlightinfo2007 m7 ON
+m8.Month=m7.Month;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516091910_02181c95-9554-45dd-a8a4-f7287fbb13c4
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+ set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+ set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+ set mapreduce.job.reduces=<number>
+Starting Job = job_1684206531580_0005, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0005/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0005
+Hadoop job information for Stage-1: number of mappers: 0; number of reducers: 1
+2023-05-16 09:19:14,333 Stage-1 map = 0%, reduce = 0%
+2023-05-16 09:19:19,460 Stage-1 map = 0%, reduce = 100%, Cumulative CPU 1.1 sec
+MapReduce Total cumulative CPU time: 1 seconds 100 msec
+Ended Job = job_1684206531580_0005
+MapReduce Jobs Launched:
+Stage-Stage-1: Reduce: 1 Cumulative CPU: 1.1 sec HDFS Read: 5526 HDFS Write: 87 SUCCESS
+Total MapReduce CPU Time Spent: 1 seconds 100 msec
+OK
+Time taken: 10.374 seconds
+24) hive (practice)> SELECT
+m8.Year,m8.Month,m8.Origin,m8.Dest,m7.Year,m7.Month,m7.Ori
+gin,m7.Dest FROM myFlightinfo2008 m8 LEFT OUTER JOIN
+myFlightinfo2007 m7 ON m8.month=m7.month;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516092118_80c45d01-b64d-4782-867e-7438334d6ce8
+Total jobs = 1
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/home/edureka/apache-hive-2.1.0-bin/lib/log4j-slf4j-impl2.4.1.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/hadoop-2.7.0/share/hadoop/common/lib/slf4jlog4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+2023-05-16 09:21:21 Starting to launch local task to process map join; maximum memory
+= 477626368
+2023-05-16 09:21:21 Dump the side-table for tag: 1 with group count: 0 into file:
+file:/tmp/student/0ccab126-eb55-44b4-bc6f-c9589cce313f/hive_2023-05-16_09-21-
+18_307_4762839719885936669-1/-local-10004/HashTable-Stage-3/MapJoin-mapfile11--.hashtable
+2023-05-16 09:21:21 Uploaded 1 File to: file:/tmp/student/0ccab126-eb55-44b4-bc6fc9589cce313f/hive_2023-05-16_09-21-18_307_4762839719885936669-1/-local-10004/HashTableStage-3/MapJoin-mapfile11--.hashtable (260 bytes)
+2023-05-16 09:21:21 End of local task; Time Taken: 0.542 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1684206531580_0006, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0006/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0006
+Hadoop job information for Stage-3: number of mappers: 0; number of reducers: 0
+2023-05-16 09:21:26,265 Stage-3 map = 0%, reduce = 0%
+Ended Job = job_1684206531580_0006
+MapReduce Jobs Launched:
+Stage-Stage-3: HDFS Read: 0 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+Time taken: 11.182 seconds
+25) hive (practice)> CREATE INDEX f08_index ON TABLE flightinfo2008
+(Origin) AS
+ > 'COMPACT' WITH DEFERRED REBUILD;
+OK
+Time taken: 0.208 seconds
+26) hive (practice> SELECT * FROM myFlightInfo2008;
+OK
+Time taken: 0.09 seconds
+27)hive (practice)> ALTER INDEX f08_index ON flightinfo2008 REBUILD;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516092346_f081a58f-d454-4034-b4b3-06a2f20938b3
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+ set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+ set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+ set mapreduce.job.reduces=<number>
+Starting Job = job_1684206531580_0007, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0007/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0007
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2023-05-16 09:23:50,370 Stage-1 map = 0%, reduce = 0%
+2023-05-16 09:23:54,471 Stage-1 map = 100%, reduce = 0%, Cumulative CPU 0.92 sec
+2023-05-16 09:23:58,595 Stage-1 map = 100%, reduce = 100%, Cumulative CPU 2.34 sec
+MapReduce Total cumulative CPU time: 2 seconds 340 msec
+Ended Job = job_1684206531580_0007
+Loading data to table practice.practice__flightinfo2008_f08_index__
+MapReduce Jobs Launched:
+Stage-Stage-1: Map: 1 Reduce: 1 Cumulative CPU: 2.34 sec HDFS Read: 48546 HDFS Write: 27804
+SUCCESS
+Total MapReduce CPU Time Spent: 2 seconds 340 msec
+OK
+Time taken: 14.413 seconds
+28) hive (practice)> SHOW INDEXES ON FlightInfo2008;
+OK
+f08_index flightinfo2008 origin practice__flightinfo2008_f08_index__
+compact
+Time taken: 0.027 seconds, Fetched: 1 row(s)
+29)hive (practice)> SELECT Origin, COUNT(1) FROM
+ > flightinfo2008 WHERE Origin = 'SYR' GROUP BY Origin;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions.
+Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = student_20230516092605_4e2ec0aa-d39f-4c37-ae25-86b149dd54e6
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+ set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+ set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+ set mapreduce.job.reduces=<number>
+Starting Job = job_1684206531580_0008, Tracking URL =
+http://student22:8088/proxy/application_1684206531580_0008/
+Kill Command = /usr/local/hadoop/hadoop-2.7.0/bin/hadoop job -kill job_1684206531580_0008
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2023-05-16 09:26:09,969 Stage-1 map = 0%, reduce = 0%
+2023-05-16 09:26:14,109 Stage-1 map = 100%, reduce = 0%, Cumulative CPU 1.05 sec
+2023-05-16 09:26:19,271 Stage-1 map = 100%, reduce = 100%, Cumulative CPU 2.29 sec
+MapReduce Total cumulative CPU time: 2 seconds 290 msec
+Ended Job = job_1684206531580_0008
+MapReduce Jobs Launched:
+Stage-Stage-1: Map: 1 Reduce: 1 Cumulative CPU: 2.29 sec HDFS Read: 47447 HDFS Write: 87
+SUCCESS
+Total MapReduce CPU Time Spent: 2 seconds 290 msec
+OK
+Time taken: 14.517 seconds
+________________________________________________________________________________
+
+3) facebook dataset:
+A) Create DataSubset:
+import pandas as pd
+import numpy as np
+
+df=pd.read_csv('dataset_Facebook.csv')
+df.head()
+
+df['type']
+
+print(df.columns)
+
+df1=df[['type','category']]
+df1
+
+df_subset = df[['like','share']]
+print(df_subset)
+
+df_subset1 = df[df['like']>100]
+
+print(df_subset1)
+
+Sort Data:
+df.sort_values(by = "like",ascending= False)
+
+df.sort_values("like")
+
+df.sort_values(by = "like",ascending= False, kind="mergesort")
+
+df.sort_values(by=["like", "share"])
+
+Transposing Data:
+result = df.transpose()
+print(result)
+
+df.shape
+
+
+Merge Data:
+selective_df = pd.DataFrame(df,columns =['like','share','Category','Type'])
+selective_df.head(5)
+
+pivot_table = pd.pivot_table(selective_df,index= ['Category','like'])
+print(pivot_table)
+
+pivot_table.shape
+
+data1 = {'Name':['Rajesh', 'shweta', 'ketki', 'prathamesh'], 
+        'Age':[21, 24, 22, 32], 
+        'Address':['Kalyan', 'Nagar', 'Beed', 'Nashik'], 
+        'Qualification':['Msc', 'MA', 'MCA', 'Phd']} 
+data2 = {'Name':['Abhi', 'Ayushi', 'Dhiraj', 'Hitesh'], 
+        'Age':[17, 14, 12, 52], 
+        'Address':['Nagpur', 'Kanpur', 'Allahabad', 'Kannuaj'], 
+        'Qualification':['Btech', 'B.A', 'Bcom', 'B.hons']} 
+df = pd.DataFrame(data1,index=[0, 1, 2, 3])
+df1 = pd.DataFrame(data2, index=[4, 5, 6, 7])
+print(df, "\n\n", df1) 
+
+frames = [df, df1]
+res1 = pd.concat(frames)
+res1
+
+df_new = pd.DataFrame(data1,index=[0, 1, 2, 3])
+df1 = pd.DataFrame(data2, index=[2, 3, 6, 7]) 
+print(df, "\n\n", df1) 
+res2 = pd.concat([df, df1], axis=1, join='inner')
+res2
+
+
+# Define a dictionary containing employee data 
+data1 = {'key': ['K0', 'K1', 'K2', 'K3'],
+         'Name':['Jai', 'Princi', 'Gaurav', 'Anuj'], 
+        'Age':[27, 24, 22, 32],} 
+   
+# Define a dictionary containing employee data 
+data2 = {'key': ['K0', 'K1', 'K2', 'K3'],
+         'Address':['Nagpur', 'Kanpur', 'Allahabad', 'Kannuaj'], 
+        'Qualification':['Btech', 'B.A', 'Bcom', 'B.hons']} 
+ 
+
+# Convert the dictionary into DataFrame  
+df = pd.DataFrame(data1)
+# Convert the dictionary into DataFrame  
+df1 = pd.DataFrame(data2) 
+print(df, "\n\n", df1) 
+res = pd.merge(df, df1, on='key')
+res
+
+
+# Define a dictionary containing employee data 
+data1 = {'key': ['K0', 'K1', 'K2', 'K3'],
+         'key1': ['K0', 'K1', 'K0', 'K1'],
+         'Name':['Jai', 'Princi', 'Gaurav', 'Anuj'], 
+        'Age':[27, 24, 22, 32],} 
+   
+# Define a dictionary containing employee data 
+data2 = {'key': ['K0', 'K1', 'K2', 'K3'],
+         'key1': ['K0', 'K0', 'K0', 'K0'],
+         'Address':['Nagpur', 'Kanpur', 'Allahabad', 'Kannuaj'], 
+        'Qualification':['Btech', 'B.A', 'Bcom', 'B.hons']} 
+ 
+# Convert the dictionary into DataFrame  
+df = pd.DataFrame(data1)
+# Convert the dictionary into DataFrame  
+df1 = pd.DataFrame(data2) 
+print(df, "\n\n", df1) 
+# merging dataframe using multiple keys
+res1 = pd.merge(df, df1, on=['key', 'key1'])
+res1
+
+_____________________________________________________________________________
+
+4)  	Air Qaulity and Heart disease
+
+import pandas as pd
+
+air_quality=pd.read_csv('AirQualityUCI.csv')
+
+air_quality.head()
+
+air_quality.isnull().sum()
+
+air_quality.shape
+
+air_quality.columns
+
+air_quality.rename(columns={'Temp':'Temparature','RH':'Humidity','AH':'Absolute Humidity'},inplace=True)
+
+air_quality['Datetime']=air_quality['Date']+air_quality['Time']
+
+air_quality.set_index('Datetime',inplace=True)
+
+air_quality.head()
+
+#Making subset of dataset to show integration
+air_subset1=air_quality[['Date','Time','CO(GT)','PT08.S1(CO)','NMHC(GT)','PT08.S2(NMHC)','Temparature']]	
+
+air_subset2=air_quality[['Temparature','Humidity','Absolute Humidity']]
+
+air_subset1.head()
+
+air_subset2.head()
+
+integrated_data=pd.merge(air_subset1,air_subset2,on='Temparature')
+
+integrated_data.head()
+
+heart=pd.read_csv("heart.csv")
+
+heart.head()
+
+heart.isnull().sum()
+
+heart.info()
+
+y=heart[['target']]
+x=heart.drop(y,axis=1)
+
+y.head()
+
+x.head()
+
+y['target'].value_counts()
+
+heart.dtypes
+
+from sklearn.model_selection import train_test_split
+
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=0)
+
+x_train.shape,x_test.shape,y_train.shape,y_test.shape
+
+from sklearn.linear_model import LogisticRegression
+
+lr=LogisticRegression()
+
+model=lr.fit(x_train,y_train)
+print("model build successfully")
+
+y_test['Prediction']=model.predict(x_test)
+
+y_test.head()
+
+from sklearn.metrics import accuracy_score
+
+print(accuracy_score(y_test['target'],y_test['Prediction']))
+
+
+___________________________________________________________________________________________________________________________------
+6) Visualization on Airqaulity and heart disease
+
+
+import matplotlib.pyplot as plt 
+import seaborn as sns
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('heart.csv')
+
+df.head(5)
+
+#barplot using the seaborn
+sns.barplot(x='sex',y='thalach',data = df)
+
+#scatterplot using seaborn
+sns.scatterplot(x='age', y='thalach',data = df)
+
+#lineplot using seaborn
+sns.lineplot(x='sex',y='thalach',data=df)	
+
+#pairplot using seaborn
+plt.figure(figsize=(12,12))
+sns.pairplot(df, hue='sex',palette='Blues')	
+
+#displot using seaborn
+sns.displot(df['thalach'])
+
+#scatterplot using the matplotlib
+plt.scatter(df['thalach'],df['age'])
+plt.show()
+
+#pieplot using matplotlib
+sex_df = pd.DataFrame(df['sex'].value_counts()) 
+sex_df
+
+#pirplot using matplotlib
+plt.pie(sex_df['sex'], labels = sex_df.index)
+
+#Barplot using Matplotlib
+plt.bar(sex_df.index, sex_df['sex']) 
+plt.show()
+
+
+**********************airquality **********************
+import matplotlib.pyplot as plt 
+import seaborn as sns
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv("/content/AirQualityUCI.csv")
+
+df.head(5)		
+
+sns.barplot(x= 'NO2(GT)',y='Ozone',data = df)
+
+sns.scatterplot(x='PT08.S1(CO)', y='PT08.S2(NMHC)', data = df)
+
+sns.lineplot(x='CO(GT)',y='Ozone', data = df)
+
+plt.figure(figsize=(10,10))
+sns.pairplot(df, hue= 'Ozone',palette = 'pink')
+
+sns.displot(df['RH'])
+
+plt.scatter(df['RH'],df['AH'])
+plt.show()
+
+
+___________________________________________________________________________
+7) tableau
+
+1D Linear Visualization
+Column - SUMPetallength)
+
+2D Linear Visualisation
+Column- Relationship
+Rows- SUM(Age)
+Color - Gender
+
+3D (Volumetric) Data Visualization 
+Column - SUM(Hours-Per-Week)
+Rows- SUM(age)
+Shape- Gender
+Color- Income
+Details - Education
+
+Temporal Data Visualisation 
+Columns - Education
+Rows- SUM(Fnlwgt), SUM(Capital-Loss)
+
+Multidimensional Data Visualisation 
+Columns - Income, Race, Occupation
+Rows - SUM(Age)
+Color - Occupation
+
+Tree/ Hierarchical Data visualisation
+Size - SUM(Age)
+Color - SUM(Age)
+Label - Income, Race, Occupation
+
+Network Data visualization
+Size - Sum (Capital-Loss)
+Label- Income, Education
+Color - SUM(Fnlwgt)
+
+__________________________________________________________________________-
+
+8) web Scapper
+
+
+
+import pandas as pd
+from bs4 import BeautifulSoup
+from requests import get
+
+url='https://www.flipkart.com/search?q=tv+smart+tv&sid=ckf%2Cczl&as=on&as-show=on&otracker=AS_QueryStore_OrganicAutoSuggest_1_2_na_na_na&otracker1=AS_QueryStore_OrganicAutoSuggest_1_2_na_na_na&as-pos=1&as-type=RECENT&suggestionId=tv+smart+tv%7CTelevisions&requestId=b12db4dc-db18-45fc-81d3-afdd75727661&as-backfill=on'
+url
+
+response=get(url)
+response
+
+soup=BeautifulSoup(response.text,'lxml')
+
+master_container=soup.find_all('div',{'class':'_2kHMtA'})
+
+tv_name=[]
+for i in range(len(master_container)):
+    try:
+        tv_name.append(master_container[i].find('div',{'class':'_4rR01T'}).text)
+    except:
+        tv_name.append(None)
+
+len(tv_name)
+
+ratings=[]
+for i in range(len(master_container)):
+    try:
+        ratings.append(master_container[i].find('div',{'class':'_3LWZlK'}).text)
+    except:
+        ratings.append(None)
+
+len(ratings)
+
+price=[]
+for i in range(len(master_container)):
+    try:
+        price.append(master_container[i].find('div',{'class':'_30jeq3 _1_WHN1'}).text)
+    except:
+        price.append(None)
+
+len(price)
+
+review=[]
+for i in range(len(master_container)):
+    try:
+        review.append(master_container[i].find('span',{'class':'_2_R_DZ'}).text)
+    except:
+        review.append(None)
+
+len(review)
+
+
+data={"TV":tv_name,'Ratings':ratings,'Price':price,'Reviews':review}
+
+data=pd.DataFrame(data)
+
+data 
+
+
